@@ -19,6 +19,9 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS sessions (
     token TEXT PRIMARY KEY,
     encrypted_connection_string TEXT NOT NULL,
+    server TEXT,
+    username TEXT,
+    database TEXT,
     created_at INTEGER NOT NULL,
     last_used_at INTEGER NOT NULL
   )
@@ -33,22 +36,38 @@ db.exec(`
 export interface SessionData {
   token: string
   encryptedConnectionString: string
+  server?: string
+  username?: string
+  database?: string
   createdAt: number
   lastUsedAt: number
 }
 
-export function saveSession(token: string, encryptedConnectionString: string): void {
+export function saveSession(
+  token: string,
+  encryptedConnectionString: string,
+  metadata?: { server?: string; username?: string; database?: string }
+): void {
   const now = Date.now()
   const stmt = db.prepare(`
-    INSERT OR REPLACE INTO sessions (token, encrypted_connection_string, created_at, last_used_at)
-    VALUES (?, ?, ?, ?)
+    INSERT OR REPLACE INTO sessions (token, encrypted_connection_string, server, username, database, created_at, last_used_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `)
-  stmt.run(token, encryptedConnectionString, now, now)
+  stmt.run(
+    token,
+    encryptedConnectionString,
+    metadata?.server || null,
+    metadata?.username || null,
+    metadata?.database || null,
+    now,
+    now
+  )
 }
 
 export function getSession(token: string): SessionData | null {
   const stmt = db.prepare(`
     SELECT token, encrypted_connection_string as encryptedConnectionString,
+           server, username, database,
            created_at as createdAt, last_used_at as lastUsedAt
     FROM sessions
     WHERE token = ?

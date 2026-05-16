@@ -13,9 +13,22 @@ export const connectDatabase = createServerFn({
   try {
     // Build connection string
     let connectionString: string
+    let metadata: { server?: string; username?: string; database?: string } = {}
 
     if (data.mode === 'connectionString') {
       connectionString = data.connectionString
+      // Try to parse connection string to extract metadata
+      try {
+        const url = new URL(connectionString)
+        const [host, port] = [url.hostname, url.port]
+        metadata = {
+          server: port ? `${host}:${port}` : host,
+          username: url.username || undefined,
+          database: url.pathname.slice(1) || undefined, // Remove leading slash
+        }
+      } catch {
+        // If parsing fails, leave metadata empty
+      }
     } else {
       connectionString = buildConnectionString({
         server: data.server,
@@ -23,6 +36,11 @@ export const connectDatabase = createServerFn({
         password: data.password,
         database: data.database,
       })
+      metadata = {
+        server: data.server,
+        username: data.username,
+        database: data.database,
+      }
     }
 
     // Test connection
@@ -37,9 +55,9 @@ export const connectDatabase = createServerFn({
     // Generate session token
     const sessionToken = generateSessionToken()
 
-    // Encrypt and save connection string
+    // Encrypt and save connection string with metadata
     const encryptedConnectionString = encrypt(connectionString)
-    saveSession(sessionToken, encryptedConnectionString)
+    saveSession(sessionToken, encryptedConnectionString, metadata)
 
     return {
       success: true,
