@@ -13,7 +13,7 @@ export const connectDatabase = createServerFn({
   try {
     // Build connection string
     let connectionString: string
-    let metadata: { server?: string; username?: string; database?: string } = {}
+    let metadata: { dbType?: string; server?: string; username?: string; database?: string } = {}
 
     if (data.mode === 'connectionString') {
       connectionString = data.connectionString
@@ -21,7 +21,12 @@ export const connectDatabase = createServerFn({
       try {
         const url = new URL(connectionString)
         const [host, port] = [url.hostname, url.port]
+
+        // Extract database type from scheme (e.g., postgresql, mysql, sqlite)
+        const dbType = url.protocol.replace(':', '')
+
         metadata = {
+          dbType: dbType,
           server: port ? `${host}:${port}` : host,
           username: url.username || undefined,
           database: url.pathname.slice(1) || undefined, // Remove leading slash
@@ -37,6 +42,7 @@ export const connectDatabase = createServerFn({
         database: data.database,
       })
       metadata = {
+        dbType: 'postgresql', // Default to postgresql for separate fields mode
         server: data.server,
         username: data.username,
         database: data.database,
